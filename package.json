@@ -1,0 +1,13 @@
+{
+  "name": "pc-management",
+  "version": "1.0.0",
+  "description": "PC Management System",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm start",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": ["pc-management", "react", "typescript"],
+  "author": "",
+  "license": "ISC"
+}
