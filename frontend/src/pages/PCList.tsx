@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -27,11 +27,7 @@ const PCList: React.FC = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadPCs();
-  }, [page, search]);
-
-  const loadPCs = async () => {
+  const loadPCs = useCallback(async () => {
     try {
       setLoading(true);
       const response = await pcService.getPCs(page, limit, search);
@@ -42,7 +38,11 @@ const PCList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, search]);
+
+  useEffect(() => {
+    loadPCs();
+  }, [loadPCs]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

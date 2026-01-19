@@ -5,16 +5,16 @@ services:
     image: postgres:15-alpine
     container_name: pc-management-postgres
     environment:
-      POSTGRES_USER: pcuser
-      POSTGRES_PASSWORD: pcpass
-      POSTGRES_DB: pcmanagement
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pcuser"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,8 +27,8 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: pcuser
-      KC_DB_PASSWORD: pcpass
+      KC_DB_USERNAME: ${DB_USER}
+      KC_DB_PASSWORD: ${DB_PASSWORD}
     ports:
       - "8080:8080"
     command: start-dev

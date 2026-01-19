@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Container,
@@ -39,13 +39,9 @@ const PCDetail: React.FC = () => {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!isNew && id) {
-      loadPC();
-    }
-  }, [id, isNew]);
+  const loadPC = useCallback(async () => {
+    if (!id) return;
 
-  const loadPC = async () => {
     try {
       setLoading(true);
       const pc = await pcService.getPC(parseInt(id!));
@@ -67,7 +63,13 @@ const PCDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+  
+  useEffect(() => {
+    if (!isNew) {
+      loadPC();
+    }
+  }, [isNew, loadPC]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
