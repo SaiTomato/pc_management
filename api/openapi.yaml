@@ -223,6 +223,13 @@ components:
         purchaseDate:
           type: string
           format: date
+        username:
+          type: string
+        place:
+          type: string
+          enum: [office, worksite, remote]
+        usefor:
+          type: string
         notes:
           type: string
         createdAt:
@@ -261,5 +268,12 @@ components:
         purchaseDate:
           type: string
           format: date
+        username:
+          type: string
+        place:
+          type: string
+          enum: [office, worksite, remote]
+        usefor:
+          type: string
         notes:
           type: string

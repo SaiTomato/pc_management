@@ -1,0 +1,477 @@
+openapi: 3.0.0
+info:
+  title: PC Management API
+  version: 1.0.0
+  description: PC管理システムのAPI仕様
+
+servers:
+  - url: http://localhost:3001/api
+    description: 開発環境
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      summary: ログイン
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/logout:
+    post:
+      summary: ログアウト
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: ログアウト成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /pcs:
+    get:
+      summary: PC一覧取得
+      tags:
+        - PCs
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+        - name: search
+          in: query
+          description: >
+            PC名、製造元、モデル、ユーザー名で検索
+            部分一致検索。
+            対象フィールド：
+            - name
+            - username
+            - usefor
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PC一覧
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PCListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: PC登録
+      tags:
+        - PCs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PCInput'
+      responses:
+        '201':
+          description: PC登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PCDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /pcs/{id}:
+    get:
+      summary: PC詳細取得
+      tags:
+        - PCs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: PC詳細
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PCDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: PC詳細更新（管理者専用）
+      description: |-
+        PCの全情報を置き換えます。
+        管理者のみ実行可能です。
+        すべての必須フィールドを指定する必要があります。
+      tags:
+        - PCs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PCInput'
+      responses:
+        '200':
+          description: PC詳細更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PCDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      summary: PC更新
+      tags:
+        - PCs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PCPatchInput'
+      responses:
+        '200':
+          description: PC更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PCDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: PC削除
+      tags:
+        - PCs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: PC削除成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: リクエストが無効です
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: 認証が必要です
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: リソースが見つかりません
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalServerError:
+      description: サーバーエラーが発生しました
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    Forbidden:
+      description: このアクションを実行する権限がありません
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+        
+    Conflict:
+      description: リソースが既に存在するか、競合が発生しました
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWTアクセストークン
+        refresh_token:
+          type: string
+          description: リフレッシュトークン
+        expires_in:
+          type: integer
+          description: トークンの有効期限（秒）
+
+    PCListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PCSummary'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+    
+    PCSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        username:
+          type: string
+        usefor:
+          type: string
+        place:
+          type: string
+          enum: [office, worksite, remote]
+        status:
+          type: string
+          enum: [active, inactive, maintenance]
+    
+    PCDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        manufacturer:
+          type: string
+        model:
+          type: string
+        serialNumber:
+          type: string
+        os:
+          type: string
+        cpu:
+          type: string
+        memory:
+          type: string
+        storage:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, maintenance]
+        purchaseDate:
+          type: string
+          format: date
+        username:
+          type: string
+        place:
+          type: string
+          enum: [office, worksite, remote]
+        usefor:
+          type: string
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          description: 更新日時
+
+    PCInput:
+      type: object
+      required:
+        - name
+        - manufacturer
+        - model
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        manufacturer:
+          type: string
+          minLength: 1
+          maxLength: 255
+        model:
+          type: string
+          minLength: 1
+          maxLength: 255
+        serialNumber:
+          type: string
+          maxLength: 255
+        os:
+          type: string
+          maxLength: 255
+        cpu:
+          type: string
+          maxLength: 255
+        memory:
+          type: string
+          maxLength: 255
+        storage:
+          type: string
+          maxLength: 255
+        status:
+          type: string
+          enum: [active, inactive, maintenance]
+          default: inactive
+        purchaseDate:
+          type: string
+          format: date
+        username:
+          type: string
+          maxLength: 255
+        place:
+          type: string
+          enum: [office, worksite, remote]
+          default: office
+        usefor:
+          type: string
+          maxLength: 500
+        notes:
+          type: string
+          maxLength: 1000
+
+    PCPatchInput:
+      type: object
+      description: PCの部分更新用入力
+      properties:
+        username:
+          type: string
+          maxLength: 255
+        usefor:
+          type: string
+          maxLength: 500
+        place:
+          type: string
+          enum: [office, worksite, remote]
+        status:
+          type: string
+          enum: [active, inactive, maintenance]
+        notes:
+          type: string
+          maxLength: 1000
