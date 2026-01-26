@@ -7,6 +7,20 @@ import pcRoutes from './routes/pcs';
 
 dotenv.config();
 
+// ===== 必須な環境変数チェック =====
+const requiredEnvs = [
+  'JWT_SECRET_ACCESS',
+  'JWT_SECRET_REFRESH',
+  'DATABASE_URL',
+];
+
+for (const key of requiredEnvs) {
+  if (!process.env[key]) {
+    console.error(`✗ Environment variable ${key} is not defined`);
+    process.exit(1); // 起動失敗
+  }
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 

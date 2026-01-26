@@ -251,15 +251,6 @@ router.patch(
       const params: any[] = [];
       let paramCount = 1;
 
-      // const allowedFields = ['status', 'username', 'place', 'usefor'];
-
-      // allowedFields.forEach((field) => {
-      //   if (req.body[field] !== undefined) {
-      //     updates.push(`${field} = $${paramCount}`);
-      //     params.push(req.body[field]);
-      //     paramCount++;
-      //   }
-      // });
       const fieldMap: Record<string, string> = {
         status: 'status',
         username: 'username',

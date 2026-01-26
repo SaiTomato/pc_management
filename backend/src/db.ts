@@ -49,6 +49,18 @@ export const initDatabase = async () => {
       );
     `);
 
+    // refresh_tokens テーブル作成
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash VARCHAR(255) UNIQUE NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        revoked BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // 初期管理者ユーザーの作成（既に存在しない場合）
     const adminExists = await client.query(
       'SELECT id FROM users WHERE username = $1',
@@ -62,6 +74,21 @@ export const initDatabase = async () => {
         ['admin', hashedPassword, 'admin@example.com', 'admin']
       );
       console.log('✓ 初期管理者ユーザーを作成しました (username: admin)');
+    }
+
+    // 初期非管理者ユーザーの作成（既に存在しない場合）
+    const userExists = await client.query(
+      'SELECT id FROM users WHERE username = $1',
+      ['user']
+    );
+
+    if (userExists.rows.length === 0) {
+      const hashedPassword = await bcrypt.hash('user123', 10);
+      await client.query(
+        'INSERT INTO users (username, password, email, role) VALUES ($1, $2, $3, $4)',
+        ['user', hashedPassword, 'user@example.com', 'user']
+      );
+      console.log('✓ 初期非管理者ユーザーを作成しました (username: user)');
     }
 
     console.log('✓ データベース初期化完了');

@@ -1,9 +1,10 @@
 import express, { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { body, validationResult } from 'express-validator';
 import { pool } from '../db';
-import { authenticateToken, AuthRequest, revokeToken } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { RefreshTokenPayload, signAccessToken, signRefreshToken, verifyRefreshToken } from '../services/tokenService';
+import { revokeRefreshToken, storeRefreshToken } from '../services/refreshTokenService';
 
 const router = express.Router();
 
@@ -56,24 +57,27 @@ router.post(
       }
 
       // JWTトークン生成
-      const expiresIn = 3600; // 1時間
-      const accessToken = jwt.sign(
-        { id: user.id, username: user.username, role: user.role },
-        process.env.JWT_SECRET || 'secret',
-        { expiresIn }
-      );
+      const accessToken = signAccessToken({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+      });
 
       // リフレッシュトークン生成（オプション）
-      const refreshToken = jwt.sign(
-        { id: user.id, username: user.username },
-        process.env.JWT_SECRET || 'secret',
-        { expiresIn: '7d' }
-      );
+      const refreshToken = signRefreshToken({
+        id: user.id
+      });
+      const ok = await storeRefreshToken(user.id, refreshToken);
 
+      if (!ok) {
+        return res.status(500).json({
+          code: 'TOKEN_STORE_FAILED',
+          message: 'トークン保存に失敗しました',
+        });
+      }
       res.status(200).json({
         access_token: accessToken,
         refresh_token: refreshToken,
-        expires_in: expiresIn,
         user: {
           id: user.id,
           username: user.username,
@@ -92,15 +96,29 @@ router.post(
 );
 
 // ログアウト
-router.post('/logout', (req: AuthRequest, res: Response) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (token) {
-    revokeToken(token);
+router.post('/logout', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const { refresh_token } = req.body; // 今はbodyから取得が、httpOnly cookieに変更も検討可能
+
+  if (!refresh_token) {
+    return res.status(400).json({
+      code: 'BAD_REQUEST',
+      message: 'refresh token が必要です',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const ok = await revokeRefreshToken(req.user!.id, refresh_token);
+
+  if (!ok) {
+    return res.status(400).json({
+      code: 'INVALID_TOKEN',
+      message: 'refresh token が無効です',
+      timestamp: new Date().toISOString(),
+    });
   }
   
   // トークンベースの認証では、クライアント側でトークンを削除
-  res.status(200).json({ 
+  return res.status(200).json({ 
     message: 'ログアウトしました',
     timestamp: new Date().toISOString()
   });
@@ -110,7 +128,7 @@ router.post('/logout', (req: AuthRequest, res: Response) => {
 router.post(
   '/refresh',
   [body('refresh_token').notEmpty().withMessage('リフレッシュトークンが必要です')],
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ 
@@ -122,26 +140,62 @@ router.post(
 
     const { refresh_token } = req.body;
 
+    let userId: number;
     try {
-      const decoded: any = jwt.verify(refresh_token, process.env.JWT_SECRET || 'secret');
-      const expiresIn = 3600;
-      const newAccessToken = jwt.sign(
-        { id: decoded.id, username: decoded.username },
-        process.env.JWT_SECRET || 'secret',
-        { expiresIn }
-      );
-
-      res.status(200).json({
-        access_token: newAccessToken,
-        expires_in: expiresIn
-      });
+      const decoded = verifyRefreshToken(refresh_token);
+      userId = decoded.id;
     } catch (err) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         code: 'INVALID_TOKEN',
-        message: 'リフレッシュトークンが無効です',
-        timestamp: new Date().toISOString()
+        message: 'refresh token が無効です',
       });
     }
+
+    // DB 校验 + revoke
+    const ok = await revokeRefreshToken(userId, refresh_token);
+
+    if (!ok) {
+      return res.status(401).json({
+        code: 'INVALID_TOKEN',
+        message: 'refresh token が無効です',
+      });
+    }
+
+    const userResult = await pool.query(
+        'SELECT id, username, role FROM users WHERE id = $1',
+        [userId]
+    );
+    const user = userResult.rows[0];
+    if (!user) {
+      return res.status(401).json({
+        code: 'INVALID_TOKEN',
+        message: 'ユーザーが存在しません',
+      });
+    }
+
+    // === rotation ===
+    const newAccessToken = signAccessToken({
+      id: user.id,
+      username: user.username,
+      role: user.role,
+    });
+
+    const newRefreshToken = signRefreshToken({
+      id: user.id
+    });
+
+    const new_ok = await storeRefreshToken(user.id, newRefreshToken);
+
+    if (!new_ok) {
+      return res.status(500).json({
+        code: 'TOKEN_STORE_FAILED',
+        message: 'トークン保存に失敗しました',
+      });
+    }
+    res.json({
+      access_token: newAccessToken,
+      refresh_token: newRefreshToken,
+    });
   }
 );
 
