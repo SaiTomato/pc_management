@@ -10,7 +10,7 @@ export async function storeRefreshToken(
 
     const result = await pool.query(
       `
-      INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+      INSERT INTO refreshTokens (user_id, token_hash, expires_at)
       VALUES ($1, $2, NOW() + INTERVAL '7 days')
       `,
       [userId, tokenHash]
@@ -31,7 +31,7 @@ export async function revokeRefreshToken(
 
   const result = await pool.query(
     `
-    UPDATE refresh_tokens
+    UPDATE refreshTokens
     SET revoked = TRUE
     WHERE user_id = $1
       AND token_hash = $2

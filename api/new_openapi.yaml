@@ -315,10 +315,10 @@ components:
     LoginResponse:
       type: object
       properties:
-        access_token:
+        accessToken:
           type: string
           description: JWTアクセストークン
-        refresh_token:
+        refreshToken:
           type: string
           description: リフレッシュトークン
         expires_in:

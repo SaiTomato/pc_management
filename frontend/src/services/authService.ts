@@ -1,30 +1,27 @@
-import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+import { api } from './api';
 
 export const authService = {
   login: async (username: string, password: string) => {
-    const response = await axios.post(`${API_URL}/auth/login`, {
-      username,
-      password,
-    });
-    return response.data;
+    const res = await api.post(
+      '/auth/login',
+      { username, password },
+      { withCredentials: true } // withCredentials: true to allow cookies
+    );
+
+    // only store access tokens in localStorage
+    localStorage.setItem('accessToken', res.data.accessToken);
+    console.log('login response:', res.data);
+
+    return res.data;
   },
 
   logout: async () => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        await axios.post(
-          `${API_URL}/auth/logout`,
-          {},
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-      } catch (error) {
-        console.error('Logout error:', error);
-      }
-    }
+    // don't store any tokens in localStorage
+    const res = await api.post(
+      '/auth/logout',
+      {},
+      { withCredentials: true } // withCredentials: true to allow cookies
+    );
+    return res.data;
   },
 };

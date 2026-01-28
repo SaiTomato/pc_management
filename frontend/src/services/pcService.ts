@@ -1,72 +1,52 @@
-import axios from 'axios';
+import { api } from './api';
+import type { PC, PCInput, PCPatchInput } from './pcType';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
-};
-
-export interface PC {
-  id: number;
-  name: string;
-  manufacturer: string;
-  model: string;
-  serialNumber?: string;
-  os?: string;
-  cpu?: string;
-  memory?: string;
-  storage?: string;
-  status: 'active' | 'inactive' | 'maintenance';
-  purchaseDate?: string;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PCInput {
-  name: string;
-  manufacturer: string;
-  model: string;
-  serialNumber?: string;
-  os?: string;
-  cpu?: string;
-  memory?: string;
-  storage?: string;
-  status?: 'active' | 'inactive' | 'maintenance';
-  purchaseDate?: string;
-  notes?: string;
+export interface PCListResponse {
+  data: PC[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export const pcService = {
-  getPCs: async (page: number = 1, limit: number = 10, search: string = '') => {
-    const response = await axios.get(`${API_URL}/pcs`, {
+  // PC 一览
+  getPCs: async (
+    page = 1,
+    limit = 10,
+    search = ''
+  ): Promise<PCListResponse> => {
+    const response = await api.get('/pcs', {
       params: { page, limit, search },
-      ...getAuthHeaders(),
     });
     return response.data;
   },
 
-  getPC: async (id: number) => {
-    const response = await axios.get(`${API_URL}/pcs/${id}`, getAuthHeaders());
+  // PC 详情
+  getPC: async (id: number): Promise<PC> => {
+    const response = await api.get(`/pcs/${id}`);
     return response.data;
   },
 
-  createPC: async (pc: PCInput) => {
-    const response = await axios.post(`${API_URL}/pcs`, pc, getAuthHeaders());
+  // 新增 PC
+  createPC: async (pc: PCInput): Promise<PC> => {
+    const response = await api.post('/pcs', pc);
     return response.data;
   },
 
-  updatePC: async (id: number, pc: PCInput) => {
-    const response = await axios.put(`${API_URL}/pcs/${id}`, pc, getAuthHeaders());
+  // ⭐ 普通用户 PATCH（你之前缺的）
+  patchPC: async (id: number, pc: PCPatchInput): Promise<PC> => {
+    const response = await api.patch(`/pcs/${id}`, pc);
     return response.data;
   },
 
-  deletePC: async (id: number) => {
-    await axios.delete(`${API_URL}/pcs/${id}`, getAuthHeaders());
+  // ⭐ 管理员 PUT（完整更新）
+  updatePC: async (id: number, pc: PCInput): Promise<PC> => {
+    const response = await api.put(`/pcs/${id}`, pc);
+    return response.data;
+  },
+
+  // 管理员删除
+  deletePC: async (id: number): Promise<void> => {
+    await api.delete(`/pcs/${id}`);
   },
 };

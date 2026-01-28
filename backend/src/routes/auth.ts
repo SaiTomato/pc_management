@@ -2,8 +2,8 @@ import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { body, validationResult } from 'express-validator';
 import { pool } from '../db';
-import { authenticateToken, AuthRequest } from '../middleware/auth';
-import { RefreshTokenPayload, signAccessToken, signRefreshToken, verifyRefreshToken } from '../services/tokenService';
+import { AuthRequest } from '../middleware/auth';
+import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../services/tokenService';
 import { revokeRefreshToken, storeRefreshToken } from '../services/refreshTokenService';
 
 const router = express.Router();
@@ -75,15 +75,23 @@ router.post(
           message: 'トークン保存に失敗しました',
         });
       }
-      res.status(200).json({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        user: {
-          id: user.id,
-          username: user.username,
-          role: user.role
-        }
-      });
+      res
+        .status(200)
+        .cookie('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax', // CSRF対策
+          path: '/api/auth',
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 天
+        })
+        .json({
+          accessToken,
+          user: {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+          },
+        });
     } catch (err) {
       console.error('ログインエラー:', err);
       res.status(500).json({ 
@@ -96,20 +104,19 @@ router.post(
 );
 
 // ログアウト
-router.post('/logout', authenticateToken, async (req: AuthRequest, res: Response) => {
-  const { refresh_token } = req.body; // 今はbodyから取得が、httpOnly cookieに変更も検討可能
-
-  if (!refresh_token) {
-    return res.status(400).json({
-      code: 'BAD_REQUEST',
-      message: 'refresh token が必要です',
-      timestamp: new Date().toISOString(),
+router.post('/logout', async (req: AuthRequest, res: Response) => {
+  const refreshToken = req.cookies.refreshToken;
+  console.log('cookies:', req.cookies);
+  if (!refreshToken) {
+    return res.status(200).json({
+      message: 'already logged out',
     });
   }
-
-  const ok = await revokeRefreshToken(req.user!.id, refresh_token);
-
-  if (!ok) {
+  
+  try {
+    const decoded = verifyRefreshToken(refreshToken);
+    await revokeRefreshToken(decoded.id, refreshToken);
+  } catch (err) {
     return res.status(400).json({
       code: 'INVALID_TOKEN',
       message: 'refresh token が無効です',
@@ -118,7 +125,12 @@ router.post('/logout', authenticateToken, async (req: AuthRequest, res: Response
   }
   
   // トークンベースの認証では、クライアント側でトークンを削除
-  return res.status(200).json({ 
+  return res
+    .status(200)
+    .clearCookie('refreshToken', {
+      path: '/api/auth',
+    })
+    .json({ 
     message: 'ログアウトしました',
     timestamp: new Date().toISOString()
   });
@@ -127,7 +139,6 @@ router.post('/logout', authenticateToken, async (req: AuthRequest, res: Response
 // トークンリフレッシュ（オプション）
 router.post(
   '/refresh',
-  [body('refresh_token').notEmpty().withMessage('リフレッシュトークンが必要です')],
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -138,11 +149,11 @@ router.post(
       });
     }
 
-    const { refresh_token } = req.body;
+    const refreshToken = req.cookies.refreshToken;
 
     let userId: number;
     try {
-      const decoded = verifyRefreshToken(refresh_token);
+      const decoded = verifyRefreshToken(refreshToken);
       userId = decoded.id;
     } catch (err) {
       return res.status(401).json({
@@ -152,7 +163,7 @@ router.post(
     }
 
     // DB 校验 + revoke
-    const ok = await revokeRefreshToken(userId, refresh_token);
+    const ok = await revokeRefreshToken(userId, refreshToken);
 
     if (!ok) {
       return res.status(401).json({
@@ -192,10 +203,17 @@ router.post(
         message: 'トークン保存に失敗しました',
       });
     }
-    res.json({
-      access_token: newAccessToken,
-      refresh_token: newRefreshToken,
-    });
+    res
+      .cookie('refreshToken', newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax', // CSRF対策
+        path: '/api/auth',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      })
+      .json({
+        accessToken: newAccessToken,
+      });
   }
 );
 

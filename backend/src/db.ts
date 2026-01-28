@@ -49,9 +49,9 @@ export const initDatabase = async () => {
       );
     `);
 
-    // refresh_tokens テーブル作成
+    // refreshTokens テーブル作成
     await client.query(`
-      CREATE TABLE IF NOT EXISTS refresh_tokens (
+      CREATE TABLE IF NOT EXISTS refreshTokens (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         token_hash VARCHAR(255) UNIQUE NOT NULL,

@@ -4,6 +4,7 @@ import cors from 'cors';
 import { pool, initDatabase, testConnection } from './db';
 import authRoutes from './routes/auth';
 import pcRoutes from './routes/pcs';
+import cookieParser from 'cookie-parser';
 
 dotenv.config();
 
@@ -25,9 +26,12 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // ミドルウェア
-app.use(cors());
+app.use(cors({ // CORS 設定、これがないとフロントエンドから API 呼び出しがブロックされる
+  origin: 'http://localhost:3000',
+  credentials: true,
+}));
 app.use(express.json());
-
+app.use(cookieParser());
 // リクエストログ
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);

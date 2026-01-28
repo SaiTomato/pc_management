@@ -3,9 +3,15 @@ import { authService } from '../services/authService';
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
-  token: string | null;
+  login: (username: string, password: string) => Promise<{
+    accessToken: string;
+    user: {
+      id: number;
+      username: string;
+      role: string;
+    };
+ }>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,33 +29,55 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [token, setToken] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  /**
+   * 初期化：
+   * accessToken があれば「ログイン中」とみなす
+   */
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    if (storedToken) {
-      setToken(storedToken);
+    const access = localStorage.getItem('accessToken');
+    if (access) {
       setIsAuthenticated(true);
     }
   }, []);
 
+  /**
+   * tokenの変更を監視（他タブでのログイン・ログアウト対応）
+   */
+  useEffect(() => {
+    const handler = () => {
+      const access = localStorage.getItem('accessToken');
+      setIsAuthenticated(!!access);
+    };
+
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, []);
+
   const login = async (username: string, password: string) => {
-    const response = await authService.login(username, password);
-    setToken(response.access_token);
+    const res = await authService.login(username, password);
     setIsAuthenticated(true);
-    localStorage.setItem('token', response.access_token);
+    return res;
   };
 
-  const logout = () => {
-    setToken(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('token');
-    authService.logout();
+  const logout = async () => {
+    let res;
+    try {
+      res = await authService.logout();
+      console.log('logout response:', res);
+
+    } catch (e) {
+      console.warn('logout failed, force clear');
+    } finally {
+      localStorage.removeItem('accessToken');
+      setIsAuthenticated(false);
+    }
+    return res;
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, token }}>
+    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

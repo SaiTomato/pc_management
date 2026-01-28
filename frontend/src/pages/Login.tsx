@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Card, Form, Button, Alert } from 'react-bootstrap';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,8 +9,14 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/pcs');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,9 +25,8 @@ const Login: React.FC = () => {
 
     try {
       await login(username, password);
-      navigate('/pcs');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'ログインに失敗しました');
+      setError(err.response?.data?.message || err.response?.data?.error || 'ログインに失敗しました');
     } finally {
       setLoading(false);
     }

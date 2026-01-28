@@ -13,7 +13,8 @@ import {
   Nav,
 } from 'react-bootstrap';
 import { useAuth } from '../contexts/AuthContext';
-import { pcService, PC } from '../services/pcService';
+import { pcService } from '../services/pcService';
+import type { PC } from '../services/pcType';
 import './PCList.css';
 
 const PCList: React.FC = () => {
@@ -24,17 +25,23 @@ const PCList: React.FC = () => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [limit] = useState(10);
+
   const { logout } = useAuth();
   const navigate = useNavigate();
 
   const loadPCs = useCallback(async () => {
     try {
       setLoading(true);
+      setError('');
+
       const response = await pcService.getPCs(page, limit, search);
+
       setPCs(response.data);
       setTotal(response.total);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'PC一覧の取得に失敗しました');
+      setError(
+        err.response?.data?.message || 'PC一覧の取得に失敗しました'
+      );
     } finally {
       setLoading(false);
     }
@@ -47,31 +54,33 @@ const PCList: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    loadPCs();
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('このPCを削除しますか？')) {
-      try {
-        await pcService.deletePC(id);
-        loadPCs();
-      } catch (err: any) {
-        alert(err.response?.data?.error || '削除に失敗しました');
-      }
+    if (!window.confirm('このPCを削除しますか？')) return;
+
+    try {
+      await pcService.deletePC(id);
+      loadPCs();
+    } catch (err: any) {
+      alert(
+        err.response?.data?.message || '削除に失敗しました'
+      );
     }
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: { [key: string]: string } = {
+    const variants: Record<string, string> = {
       active: 'success',
       inactive: 'secondary',
       maintenance: 'warning',
     };
-    const labels: { [key: string]: string } = {
+    const labels: Record<string, string> = {
       active: '稼働中',
       inactive: '停止中',
       maintenance: 'メンテナンス中',
     };
+
     return (
       <Badge bg={variants[status] || 'secondary'}>
         {labels[status] || status}
@@ -109,7 +118,7 @@ const PCList: React.FC = () => {
           <InputGroup>
             <Form.Control
               type="text"
-              placeholder="PC名、メーカー、モデルで検索..."
+              placeholder="PC名、使用者、用途で検索..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -135,9 +144,9 @@ const PCList: React.FC = () => {
                   <tr>
                     <th>ID</th>
                     <th>PC名</th>
-                    <th>メーカー</th>
-                    <th>モデル</th>
-                    <th>OS</th>
+                    <th>使用者</th>
+                    <th>用途</th>
+                    <th>設置場所</th>
                     <th>ステータス</th>
                     <th>操作</th>
                   </tr>
@@ -154,9 +163,9 @@ const PCList: React.FC = () => {
                       <tr key={pc.id}>
                         <td>{pc.id}</td>
                         <td>{pc.name}</td>
-                        <td>{pc.manufacturer}</td>
-                        <td>{pc.model}</td>
-                        <td>{pc.os || '-'}</td>
+                        <td>{pc.username || '-'}</td>
+                        <td>{pc.usefor || '-'}</td>
+                        <td>{pc.place || '-'}</td>
                         <td>{getStatusBadge(pc.status)}</td>
                         <td>
                           <Button
