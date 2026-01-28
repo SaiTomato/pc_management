@@ -1,8 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authService } from '../services/authService';
 
+interface AuthUser {
+  id: number;
+  username: string;
+  role: 'admin' | 'user';
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
+  user: AuthUser | null;
   login: (username: string, password: string) => Promise<{
     accessToken: string;
     user: {
@@ -30,6 +37,7 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   /**
    * 初期化：
@@ -37,8 +45,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    */
   useEffect(() => {
     const access = localStorage.getItem('accessToken');
-    if (access) {
+    const userStr = localStorage.getItem('user');
+
+    if (access && userStr) {
       setIsAuthenticated(true);
+      setUser(JSON.parse(userStr));
     }
   }, []);
 
@@ -57,7 +68,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string) => {
     const res = await authService.login(username, password);
+    localStorage.setItem('user', JSON.stringify(res.user));
     setIsAuthenticated(true);
+    setUser(res.user);
     return res;
   };
 
@@ -71,13 +84,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.warn('logout failed, force clear');
     } finally {
       localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      setUser(null);
       setIsAuthenticated(false);
     }
     return res;
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

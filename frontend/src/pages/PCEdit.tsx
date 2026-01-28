@@ -1,21 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Spinner, Alert, Button } from 'react-bootstrap';
+import { Spinner, Alert } from 'react-bootstrap';
 import PCForm from '../components/PCForm';
 import { pcService } from '../services/pcService';
 import type { PCInput } from '../services/pcType';
-import { useAuth } from '../contexts/AuthContext';
 
-const PCDetail = () => {
+const PCEdit = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [data, setData] = useState<PCInput | null>(null);
+  const [initialData, setInitialData] = useState<PCInput | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | undefined>();
-
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     if (!id) return;
@@ -24,7 +21,8 @@ const PCDetail = () => {
       try {
         const pc = await pcService.getPC(Number(id));
 
-        const detail: PCInput = {
+        // PC → PCInput 変換
+        const data: PCInput = {
           name: pc.name,
           manufacturer: pc.manufacturer,
           model: pc.model,
@@ -41,7 +39,7 @@ const PCDetail = () => {
           notes: pc.notes,
         };
 
-        setData(detail);
+        setInitialData(data);
       } catch (err) {
         console.error(err);
         setError('PC情報の取得に失敗しました');
@@ -53,21 +51,22 @@ const PCDetail = () => {
     fetchPC();
   }, [id]);
 
-  const handleSubmit = async (formData: PCInput) => {
+  const handleSubmit = async (data: PCInput) => {
     if (!id) return;
 
     try {
-      await pcService.patchPC(Number(id), {
-        status: formData.status,
-        username: formData.username,
-        place: formData.place,
-        usefor: formData.usefor,
-      });
+      setSaving(true);
+      setError(undefined);
 
+      await pcService.updatePC(Number(id), data);
+
+      // 成功後：一覧へ
       navigate('/pcs');
     } catch (err) {
       console.error(err);
       setError('更新に失敗しました');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -79,39 +78,20 @@ const PCDetail = () => {
     );
   }
 
-  if (!data) {
+  if (!initialData) {
     return <Alert variant="danger">PCが見つかりません</Alert>;
   }
 
   return (
-    <>
-      <PCForm
-        title="PC詳細"
-        initialData={data}
-        editableAll={false}
-        editableFields={['status', 'username', 'place', 'usefor']}
-        hideSubmit={false} 
-        onSubmit={handleSubmit}      
-      />
-
-      {isAdmin && (
-        <div className="text-center mt-3">
-          <Button
-            variant="primary"
-            onClick={() => navigate(`/pcs/${id}/edit`)}
-          >
-            管理者として編集
-          </Button>
-        </div>
-      )}
-
-      <div className="text-center mt-3">
-        <Button variant="secondary" onClick={() => navigate('/pcs')}>
-          一覧へ戻る
-        </Button>
-      </div>
-    </>
+    <PCForm
+      title="PC編集"
+      initialData={initialData}
+      editableAll
+      submitting={saving}
+      error={error}
+      onSubmit={handleSubmit}
+    />
   );
 };
 
-export default PCDetail;
+export default PCEdit;
