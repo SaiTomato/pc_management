@@ -136,7 +136,10 @@ router.post(
     }),
     body('status').optional().isIn(['active', 'inactive', 'maintenance']),
     body('place').optional().isIn(['office', 'worksite', 'remote']),
-    body('purchase_date').optional().isISO8601(),
+    body('purchase_date')
+      .optional()
+      .matches(/^\d{4}-\d{2}-\d{2}$/)
+      .withMessage('購入日は YYYY-MM-DD 形式で指定してください'),
   ],
   async (req: AuthRequest, res: express.Response) => {
     const errors = validationResult(req);
@@ -315,7 +318,10 @@ router.put(
     }),
     body('status').optional().isIn(['active', 'inactive', 'maintenance']),
     body('place').optional().isIn(['office', 'worksite', 'remote']),
-    body('purchase_date').optional().isISO8601(),
+    body('purchase_date')
+      .optional()
+      .matches(/^\d{4}-\d{2}-\d{2}$/)
+      .withMessage('購入日は YYYY-MM-DD 形式で指定してください'),
   ],
   requireAdmin,
   async (req: AuthRequest, res: express.Response) => {

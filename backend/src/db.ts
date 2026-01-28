@@ -1,8 +1,11 @@
-import { Pool } from 'pg';
+import pg, { Pool } from 'pg';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 
 dotenv.config();
+
+// date type problem fix
+pg.types.setTypeParser(1082, (value) => value);
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

@@ -91,7 +91,8 @@ const PCDetail = () => {
         editableAll={false}
         editableFields={['status', 'username', 'place', 'usefor']}
         hideSubmit={false} 
-        onSubmit={handleSubmit}      
+        error={error}
+        onSubmit={handleSubmit}
       />
 
       {isAdmin && (
