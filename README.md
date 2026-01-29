@@ -37,7 +37,7 @@ npm run install:all
 
 ```env
 PORT=3001
-DATABASE_URL=postgresql://pcuser:pcpass@localhost:5432/pcmanagement
+DATABASE_URL=postgresql://postgres:tomato123@localhost:5433/pcmanagement
 JWT_SECRET=your-secret-key-change-in-production
 KEYCLOAK_URL=http://localhost:8080
 KEYCLOAK_REALM=pc-management
@@ -82,7 +82,7 @@ npm run dev:frontend
 ### ログイン
 - デモ用の認証情報：
   - ユーザー名: `admin`
-  - パスワード: `admin`
+  - パスワード: `admin123`
 
 ### PC管理
 1. PC一覧画面でPCの一覧を確認

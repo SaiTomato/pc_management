@@ -38,15 +38,8 @@ paths:
                 properties:
                   accessToken:
                     type: string
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      username:
-                        type: string
-                      role:
-                        type: string
+                  refreshToken:
+                    type: string
         '401':
           description: 認証失敗
 
@@ -60,24 +53,6 @@ paths:
       responses:
         '200':
           description: ログアウト成功
-
-  /auth/refresh:
-    post:
-      summary: トークンリフレッシュ
-      tags:
-        - Authentication
-      responses:
-        '200':
-          description: リフレッシュ成功
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  accessToken:
-                    type: string
-        '401':
-          description: リフレッシュトークン無効
 
   /pcs:
     get:
@@ -166,7 +141,7 @@ paths:
           description: PCが見つかりません
 
     put:
-      summary: PC更新 (完全更新)
+      summary: PC更新
       tags:
         - PCs
       security:
@@ -183,47 +158,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/PCInput'
-      responses:
-        '200':
-          description: PC更新成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PC'
-        '400':
-          description: バリデーションエラー
-        '404':
-          description: PCが見つかりません
-
-    patch:
-      summary: PC更新 (部分更新)
-      tags:
-        - PCs
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                status:
-                  type: string
-                  enum: [active, inactive, maintenance]
-                username:
-                  type: string
-                place:
-                  type: string
-                  enum: [office, worksite, remote]
-                usefor:
-                  type: string
       responses:
         '200':
           description: PC更新成功
@@ -273,7 +207,7 @@ components:
           type: string
         model:
           type: string
-        serial_number:
+        serialNumber:
           type: string
         os:
           type: string
@@ -286,7 +220,7 @@ components:
         status:
           type: string
           enum: [active, inactive, maintenance]
-        purchase_date:
+        purchaseDate:
           type: string
           format: date
         username:
@@ -298,10 +232,10 @@ components:
           type: string
         notes:
           type: string
-        created_at:
+        createdAt:
           type: string
           format: date-time
-        updated_at:
+        updatedAt:
           type: string
           format: date-time
 
@@ -318,7 +252,7 @@ components:
           type: string
         model:
           type: string
-        serial_number:
+        serialNumber:
           type: string
         os:
           type: string
@@ -331,7 +265,7 @@ components:
         status:
           type: string
           enum: [active, inactive, maintenance]
-        purchase_date:
+        purchaseDate:
           type: string
           format: date
         username:
