@@ -21,12 +21,13 @@ services:
     image: quay.io/keycloak/keycloak:latest
     container_name: pc-management-keycloak
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: ${DB_USER}
-      KC_DB_PASSWORD: ${DB_PASSWORD}
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
+      - KC_DB_USERNAME=${DB_USER}
+      - KC_DB_PASSWORD=${DB_PASSWORD}
+      - KC_HEALTH_ENABLED=true
     ports:
       - "8080:8080"
     command: start-dev
@@ -34,10 +35,45 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1" ]
-      interval: 30s
-      timeout: 10s
+      test: [ "CMD", "java", "--version" ]
+      interval: 10s
+      timeout: 5s
       retries: 5
+
+  backend:
+    build: ./backend
+    container_name: pc-management-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=pc-management
+      - KEYCLOAK_CLIENT_ID=pc-management-client
+      - JWT_SECRET_ACCESS=new-secret-key-for-jwt-access-20260122-1323-apple
+      - JWT_SECRET_REFRESH=new-secret-key-for-jwt-refresh-20260122-1323-rabbit
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+
+  frontend:
+    build: ./frontend
+    container_name: pc-management-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:3001/api
+      - CHOKIDAR_USEPOLLING=true # Useful for file watching in Docker on Windows
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:
